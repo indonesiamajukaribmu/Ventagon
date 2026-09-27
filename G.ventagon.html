@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VENTAGON — Simulasi Resonansi Geometri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0d11; --panel:#0d0f14; --line:#23262e; --line2:#3a3f4a;
+  --ink:#e8e1cc; --dim:#928b78; --faint:#4a4638;
+  --amber:#dca644; --amber2:#f2cf8f; --bad:#8a4a3d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:'Spectral',serif;overflow:hidden}
+#app{display:grid;grid-template-rows:58px 1fr;grid-template-columns:1fr 330px;height:100vh}
+
+header{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px;border-bottom:1px solid var(--line);gap:16px}
+.brand{font-family:'Cinzel',serif;font-weight:700;font-size:16px;letter-spacing:.4em;white-space:nowrap}
+.brand .sub{font-family:'Spectral',serif;font-style:italic;font-weight:300;font-size:12px;
+  letter-spacing:.02em;color:var(--dim);margin-left:10px}
+.tabs{display:flex;gap:4px}
+.tabs button{background:none;border:none;color:var(--dim);font-family:'Spectral',serif;
+  font-size:12px;letter-spacing:.22em;padding:8px 14px;cursor:pointer;
+  border-bottom:1px solid transparent;transition:.2s}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--amber);border-bottom-color:var(--amber)}
+
+#stage{position:relative;grid-row:2;grid-column:1;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+#cv.grabbing{cursor:grabbing}
+
+aside{grid-row:2;grid-column:2;border-left:1px solid var(--line);background:var(--panel);
+  padding:26px 24px;overflow-y:auto}
+.kicker{font-size:10px;letter-spacing:.34em;color:var(--amber);margin-bottom:10px}
+aside h2{font-family:'Cinzel',serif;font-weight:700;font-size:24px;letter-spacing:.06em;
+  margin-bottom:12px;line-height:1.2}
+.story{font-style:italic;font-weight:300;font-size:14.5px;line-height:1.65;color:var(--dim);margin-bottom:20px}
+.rule-box{border-left:2px solid var(--amber);background:rgba(220,166,68,.05);
+  padding:12px 14px;margin-bottom:20px}
+.rule-box h3{font-size:10px;letter-spacing:.3em;color:var(--amber);font-weight:500;margin-bottom:7px}
+.rule-box p{font-size:13.5px;line-height:1.55}
+.rule-box .ex{margin-top:7px;font-size:12.5px;color:var(--dim);letter-spacing:.03em}
+.stats{margin-bottom:18px}
+.stat{display:flex;align-items:baseline;gap:9px;margin:9px 0}
+.stat .lbl{color:var(--dim);letter-spacing:.2em;font-size:10.5px}
+.stat .dots{flex:1;border-bottom:1px dotted var(--faint);transform:translateY(-4px)}
+.stat b{font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
+.hint{border-left:2px solid var(--amber);padding:9px 12px;font-style:italic;
+  color:var(--dim);font-size:13px;line-height:1.55;margin-bottom:16px}
+.hidden{display:none!important}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button.ghost{background:none;border:1px solid var(--line2);color:var(--dim);
+  font-family:'Spectral',serif;font-size:11.5px;letter-spacing:.22em;padding:9px 15px;
+  cursor:pointer;transition:.2s}
+button.ghost:hover{border-color:var(--amber);color:var(--amber)}
+button.ghost.icon{padding:7px 9px;display:flex;align-items:center}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.seg button{font-family:'Spectral',serif;font-size:10.5px;letter-spacing:.13em;padding:5px 10px;
+  background:none;border:1px solid var(--line2);color:var(--dim);cursor:pointer;transition:.15s}
+.seg button.on{border-color:var(--amber);color:var(--amber)}
+.slid{margin:14px 0 18px}
+.slid span{display:block;font-size:10.5px;letter-spacing:.2em;color:var(--dim);margin-bottom:8px}
+.slid input{width:100%;accent-color:var(--amber)}
+
+#toast{position:absolute;top:16px;left:50%;transform:translateX(-50%) translateY(-8px);
+  opacity:0;transition:.35s;background:#12151b;border:1px solid var(--line2);
+  padding:8px 20px;font-size:13px;pointer-events:none;z-index:5;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%)}
+
+#doneBox{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(8,9,12,.55);opacity:0;pointer-events:none;transition:opacity .7s;z-index:6}
+#doneBox.show{opacity:1;pointer-events:auto}
+.done-card{border:1px solid rgba(220,166,68,.5);background:rgba(13,15,20,.96);
+  padding:34px 46px;text-align:center;max-width:340px;transform:translateY(8px);transition:.7s}
+#doneBox.show .done-card{transform:none}
+.done-card h3{font-family:'Cinzel',serif;font-size:22px;letter-spacing:.08em;margin:8px 0 10px}
+.done-card p{font-style:italic;color:var(--dim);font-size:14px;margin-bottom:20px;line-height:1.6}
+
+#intro{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:24px;
+  transition:opacity .8s,visibility .8s}
+#intro.gone{opacity:0;visibility:hidden}
+#intro svg{width:190px;height:190px;margin-bottom:26px;animation:spin 46s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#intro h1{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(38px,7vw,62px);
+  letter-spacing:.32em;text-indent:.32em;margin-bottom:14px}
+#intro .tag{font-size:11px;letter-spacing:.4em;color:var(--amber);margin-bottom:26px}
+#intro p{max-width:520px;font-style:italic;font-weight:300;font-size:15.5px;line-height:1.8;
+  color:var(--dim);margin-bottom:36px}
+#btnStart{font-size:13px;padding:14px 34px;letter-spacing:.3em;border-color:var(--amber);color:var(--amber)}
+#btnStart:hover{background:rgba(220,166,68,.08)}
+
+@media(max-width:900px){
+  #app{grid-template-columns:1fr;grid-template-rows:58px 1fr 285px}
+  header{grid-column:1}
+  #stage{grid-row:2;grid-column:1}
+  aside{grid-row:3;grid-column:1;border-left:none;border-top:1px solid var(--line);padding:18px 20px}
+  .brand .sub{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">VENTAGON<span class="sub">simulasi resonansi geometri</span></div>
+    <nav class="tabs">
+      <button id="tabLevel" class="on">TANTANGAN</button>
+      <button id="tabFree">SIMULASI BEBAS</button>
+    </nav>
+    <button class="ghost icon" id="btnMute" aria-label="suara">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 6 9H3v6h3l5 4z"/>
+        <path class="wv" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+        <path class="mx" d="M16 9.5l5 5M21 9.5l-5 5" style="display:none"/>
+      </svg>
+    </button>
+  </header>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="toast"></div>
+    <div id="doneBox">
+      <div class="done-card">
+        <div class="kicker">RESONANSI TERCIPTA</div>
+        <h3 id="doneName"></h3>
+        <p id="doneDesc"></p>
+        <button class="ghost" id="btnNext"></button>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div id="panelLevel">
+      <div class="kicker" id="lvTag">SEKTOR 01</div>
+      <h2 id="lvName"></h2>
+      <p class="story" id="lvStory"></p>
+      <div class="rule-box">
+        <h3>HUKUM RESONANSI</h3>
+        <p id="lvRule"></p>
+        <p class="ex" id="lvEx"></p>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="lbl">SENYAR</span><span class="dots"></span><b id="stChord">0/0</b></div>
+        <div class="stat"><span class="lbl">LANGKAH</span><span class="dots"></span><b id="stMoves">0</b></div>
+        <div class="stat"><span class="lbl">SKOR</span><span class="dots"></span><b id="stScore">0</b></div>
+      </div>
+      <p class="hint hidden" id="hintText"></p>
+      <div class="btns">
+        <button class="ghost" id="btnHint">PETUNJUK</button>
+        <button class="ghost" id="btnReset">ULANGI</button>
+      </div>
+    </div>
+
+    <div id="panelFree" class="hidden">
+      <div class="kicker">RUANG KONTEMPLASI</div>
+      <h2>Simulasi Bebas</h2>
+      <p class="story">Tak ada target, tak ada skor. Susun empat belas frekuensi sesukamu,
+        pilih hukum resonansinya, lalu putar mekanisme dan saksikan senar mana yang bergetar.</p>
+      <div class="rule-box">
+        <h3>HUKUM RESONANSI</h3>
+        <div class="seg" id="ruleSeg"></div>
+        <p class="ex" id="freeRuleDesc"></p>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="lbl">SENYAR AKTIF</span><span class="dots"></span><b id="stFree">0/10</b></div>
+      </div>
+      <div class="slid">
+        <span>ROTASI MEKANISME</span>
+        <input type="range" id="rgSpeed" min="0" max="100" value="0">
+      </div>
+      <div class="btns"><button class="ghost" id="btnShuffle">ACAK SUSUNAN</button></div>
+    </div>
+  </aside>
+</div>
+
+<div id="intro">
+  <svg viewBox="0 0 200 200">
+    <g stroke="#dca644" fill="none" stroke-width="1">
+      <circle cx="100" cy="100" r="94" opacity=".35" stroke-dasharray="2 6"/>
+      <polygon points="100,10 185.6,72.2 152.9,172.8 47.1,172.8 14.4,72.2" opacity=".7"/>
+      <polygon points="100,10 152.9,172.8 14.4,72.2 185.6,72.2 47.1,172.8" opacity=".45"/>
+      <circle cx="100" cy="100" r="4" fill="#dca644" stroke="none"/>
+    </g>
+  </svg>
+  <h1>VENTAGON</h1>
+  <div class="tag">SEBUAH SIMULASI RESONANSI GEOMETRI</div>
+  <p>Sebuah instrumen lima simpul menunggu dihidupkan. Tempatkan segitiga, segilima,
+     segiprisma, bintang, dan saudara-saudaranya pada simpul-simpul pentagon —
+     dan lihat senar-senar rahasia di antara mereka bergetar ketika hukum
+     frekuensinya dipenuhi.</p>
+  <button class="ghost" id="btnStart">MEMULAI SIMULASI</button>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   VENTAGON — seluruh logika berjalan lokal di peramban.
+   Tidak ada server, tidak ada aset gambar: semua simbol
+   digambar prosedural di canvas.
+   ============================================================ */
+const TAU = Math.PI * 2;
+const COL = { ink:'#e8e1cc', dim:'#928b78', amber:'#dca644', amber2:'#f2cf8f', bad:'#8a4a3d' };
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- Koleksi simbol: nama, frekuensi, bentuk ---------- */
+const SYMBOLS = {
+  c1 :{nama:'Lingkaran Kesatuan', v:1, kind:'circle'},
+  v2 :{nama:'Vesica Piscis',      v:2, kind:'vesica'},
+  t3 :{nama:'Segitiga',           v:3, kind:'poly', n:3},
+  pr3:{nama:'Prisma Segitiga',    v:3, kind:'prism', n:3},
+  s4 :{nama:'Segiempat',          v:4, kind:'poly', n:4},
+  p5 :{nama:'Segilima',           v:5, kind:'poly', n:5},
+  st5:{nama:'Bintang Segilima',   v:5, kind:'star'},
+  pr5:{nama:'Segiprisma',         v:5, kind:'prism', n:5},
+  h6 :{nama:'Segienam',           v:6, kind:'poly', n:6},
+  pr6:{nama:'Prisma Segienam',    v:6, kind:'prism', n:6},
+  sp6:{nama:'Spiral Emas',        v:6, kind:'spiral'},
+  h7 :{nama:'Segitujuh',          v:7, kind:'poly', n:7},
+  so7:{nama:'Benih Kehidupan',    v:7, kind:'seed'},
+  o8 :{nama:'Segidelapan',        v:8, kind:'poly', n:8},
+};
+const ALL_IDS = Object.keys(SYMBOLS);
+
+/* ---------- Hukum-hukum resonansi ---------- */
+const isPrime = n => [2,3,5,7,11,13,17,19].includes(n);
+const RULES = {
+  order1  :{nama:'Berurutan', desc:'Dua simbol resonan bila selisih frekuensinya tepat 1.',
+            fn:(a,b)=>Math.abs(a-b)===1, ex:'3 ↔ 4 ✓   4 ↔ 6 ✗'},
+  sum8    :{nama:'Jumlah 8',  desc:'Dua simbol resonan bila jumlah frekuensinya tepat 8.',
+            fn:(a,b)=>a+b===8, ex:'1 ↔ 7 ✓   3 ↔ 5 ✓   2 ↔ 4 ✗'},
+  twin    :{nama:'Kembar',    desc:'Dua simbol resonan bila frekuensinya identik.',
+            fn:(a,b)=>a===b, ex:'5 ↔ 5 ✓   5 ↔ 6 ✗'},
+  parity  :{nama:'Seirama',   desc:'Dua simbol resonan bila selisihnya genap — sama-sama ganjil atau sama-sama genap.',
+            fn:(a,b)=>Math.abs(a-b)%2===0, ex:'3 ↔ 7 ✓   4 ↔ 6 ✓   4 ↔ 5 ✗'},
+  prime   :{nama:'Prima',     desc:'Dua simbol resonan bila jumlah frekuensinya bilangan prima.',
+            fn:(a,b)=>isPrime(a+b), ex:'5 ↔ 6 (=11) ✓   3 ↔ 4 (=7) ✓   4 ↔ 6 (=10) ✗'},
+  mult    :{nama:'Kelipatan', desc:'Dua simbol resonan bila frekuensi salah satunya kelipatan dari yang lain.',
+            fn:(a,b)=>a%b===0||b%a===0, ex:'2 ↔ 8 ✓   1 ↔ 5 ✓   4 ↔ 6 ✗'},
+  converge:{nama:'Konvergensi',desc:'Dua simbol resonan bila jumlahnya prima, atau selisihnya tepat 1.',
+            fn:(a,b)=>isPrime(a+b)||Math.abs(a-b)===1, ex:'4 ↔ 7 (=11) ✓   5 ↔ 6 ✓   3 ↔ 6 ✗'},
+};
+
+/* ---------- Topologi senar ---------- */
+const K5   = [[0,1],[0,2],[0,3],[0,4],[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]]; // lengkap
+const PENTA= [[0,2],[2,4],[4,1],[1,3],[3,0]];                               // bintang
+
+/* ---------- Tujuh sektor tantangan (semuanya teruji punya solusi) ---------- */
+const LEVELS = [
+  {name:'Gerbang Pertama', rule:'order1', pool:['t3','s4','p5','h6','h7'],
+   chords:[[0,1],[1,2],[2,3],[3,4]], target:4,
+   story:'Lima frekuensi pertama terbangun — 3, 4, 5, 6, 7. Empat senar membentang di antara simpul. Susun simbol agar setiap sambungan bergetar berurutan.',
+   hint:'Susun 3 – 4 – 5 – 6 – 7 mengikuti rangkaian senar, dari satu ujung ke ujung yang lain.'},
+  {name:'Timbangan Candra', rule:'sum8', pool:['c1','v2','t3','pr3','s4','p5','h6'],
+   chords:[[0,1],[1,2],[3,4]], target:3,
+   story:'Keseimbangan menuntut jumlah yang selalu sama: 8. Ingat — prisma mewarisi frekuensi bendanya; prisma segitiga bergetar sebagai 3.',
+   hint:'Butuh pasangan (3, 5) dua kali — segilima di tengah segitiga dan prisma segitiga — plus (2, 6): vesica dengan segienam.'},
+  {name:'Kembaran', rule:'twin', pool:['p5','st5','pr5','h6','pr6','h7'],
+   chords:[[0,1],[0,2],[3,4]], target:3,
+   story:'Rupa boleh berbeda, frekuensi boleh sama. Bintang segilima dan segiprisma sama-sama bergetar pada 5.',
+   hint:'Tiga simbol berfrekuensi 5 pada simpul yang saling bersenar; dua segienam (6) pada pasangan terakhir.'},
+  {name:'Seirama', rule:'parity', pool:['c1','v2','t3','pr3','s4','p5','st5','pr5','h6','h7'],
+   chords:K5, target:10,
+   story:'Sepuluh senar kini menghubungkan semua simpul. Hanya lima frekuensi seirama — serba ganjil — yang sanggup menyalakan semuanya sekaligus.',
+   hint:'Pilih lima simbol berfrekuensi ganjil. Ada tujuh kandidat ganjil di dalam baki.'},
+  {name:'Angka Suci', rule:'prime', pool:['c1','v2','t3','s4','p5','h6','h7','o8'],
+   chords:[[0,1],[1,2],[2,3],[3,4]], target:4,
+   story:'Jumlahkan dua frekuensi; bila hasilnya bilangan prima, senar akan bergetar. Jalur ini menyimpan lebih dari satu jawaban.',
+   hint:'Contoh jalur: 4 – 3 – 8 – 5 – 2. Jalur lain yang diawali lingkaran juga menanti.'},
+  {name:'Kelipatan Suci', rule:'mult', pool:['c1','v2','t3','s4','p5','h6','h7','o8'],
+   chords:PENTA, target:5,
+   story:'Bintang di dalam pentagon menuntut lima senar sekaligus. Kelipatan adalah kuncinya — dan 1, sang lingkaran, membagi segalanya.',
+   hint:'Ikuti alur bintang dengan siklus 2 → 4 → 8 → 1 → 6.'},
+  {name:'Konvergensi', rule:'converge', pool:ALL_IDS, chords:K5, target:6,
+   story:'Hukum terakhir menggabungkan dua getaran: prima dan berurutan. Enam dari sepuluh senar cukup untuk membuka inti Ventagon.',
+   hint:'Frekuensi {5, 5, 6, 6, 7} menghasilkan enam pasangan berjumlah prima — perhatikan para prisma dan bintang.'},
+];
+
+/* ---------- Referensi DOM ---------- */
+const $ = id => document.getElementById(id);
+const el = {};
+['cv','stage','toast','doneBox','doneName','doneDesc','btnNext','intro','btnStart',
+ 'tabLevel','tabFree','btnMute','panelLevel','panelFree','lvTag','lvName','lvStory',
+ 'lvRule','lvEx','stChord','stMoves','stScore','hintText','btnHint','btnReset',
+ 'ruleSeg','freeRuleDesc','stFree','rgSpeed','btnShuffle'].forEach(k=>el[k]=$(k));
+
+const cv = el.cv, ctx = cv.getContext('2d');
+
+/* ---------- State global ---------- */
+let W=0, H=0, dpr=1;
+let mode='level', lv=0, freeRule='order1';
+let rule=RULES.order1, chords=LEVELS[0].chords, target=4;
+let placed=[null,null,null,null,null];
+let dock=[], dockRects=[], dockTop=0, dockH=96, dockBig=false;
+let moves=0, score=0, bestAct=0, complete=null;
+let chordActive=[], ringAngle=0, ringSpeed=0;
+let drag=null, hoverSlot=-1, hoverDock=-1;
+let time=0, lastT=0, particles=[], stars=[];
+let R=200, cx=0, cy=0;
+const ROMAN=['I','II','III','IV','V'];
+
+/* ---------- Audio (WebAudio, dibangkitkan lokal) ---------- */
+let actx=null, muted=false;
+function initAudio(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if(actx&&actx.state==='suspended') actx.resume(); }
+function tone(f,dur=0.15,type='sine',g=0.055,delay=0){
+  if(muted||!actx) return;
+  const o=actx.createOscillator(), gn=actx.createGain(), t0=actx.currentTime+delay;
+  o.type=type; o.frequency.value=f;
+  gn.gain.setValueAtTime(0,t0);
+  gn.gain.linearRampToValueAtTime(g,t0+0.012);
+  gn.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(gn).connect(actx.destination); o.start(t0); o.stop(t0+dur+0.05);
+}
+const SCALE=[0,2,4,7,9,12,14,16];                     // tangga pentatonik utk frekuensi 1..8
+const noteOf = v => 220*Math.pow(2,SCALE[clamp(v,1,8)-1]/12);
+const sndPick = ()=>tone(640,0.07,'triangle',0.035);
+const sndDrop = v =>tone(noteOf(v),0.28,'sine',0.05);
+function sndLink(va,vb){ tone(noteOf(va),0.45,'sine',0.05); tone(noteOf(vb),0.45,'sine',0.05,0.07); }
+function sndWin(){ [0,4,7,12].forEach((s,i)=>tone(330*Math.pow(2,s/12),0.5,'sine',0.055,i*0.12)); }
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg){
+  el.toast.textContent=msg; el.toast.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.toast.classList.remove('show'),2100);
+}
+
+/* ---------- Layout & geometri ---------- */
+function resize(){
+  dpr=window.devicePixelRatio||1;
+  const r=el.stage.getBoundingClientRect();
+  W=r.width; H=r.height;
+  cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  layoutDock(); computeStage(); makeStars();
+}
+function layoutDock(){
+  dockH=dockBig?138:96; dockTop=H-dockH; dockRects=[];
+  const n=dock.length; if(!n) return;
+  const rows=dockBig?[dock.slice(0,Math.ceil(n/2)),dock.slice(Math.ceil(n/2))]:[dock];
+  rows.forEach((row,ri)=>{
+    const m=row.length; if(!m) return;
+    const gap=Math.min(84,(W-50)/m);
+    const x0=W/2-gap*(m-1)/2;
+    const y=dockTop+(dockBig?44+ri*56:50);
+    row.forEach((id,i)=>dockRects.push({id,x:x0+i*gap,y}));
+  });
+}
+function computeStage(){
+  const avail=Math.min(W-90, H-dockH-70);
+  R=clamp(avail*0.34,100,262);
+  cx=W/2; cy=(H-dockH)/2+6;
+}
+const slotAng = i => -Math.PI/2 + i*TAU/5 + ringAngle;
+const slotPos = i => { const a=slotAng(i); return {x:cx+Math.cos(a)*R, y:cy+Math.sin(a)*R}; };
+function makeStars(){
+  stars=[];
+  for(let k=0;k<130;k++) stars.push({
+    x:Math.random(), y:Math.random()*0.94, r:0.4+Math.random()*1.1,
+    ph:Math.random()*TAU, sp:0.3+Math.random()*0.9, warm:Math.random()<0.2
+  });
+}
+
+/* ---------- Muat level / mode ---------- */
+function loadLevel(i){
+  mode='level'; lv=i;
+  const L=LEVELS[i];
+  rule=RULES[L.rule]; chords=L.chords; target=L.target;
+  placed=[null,null,null,null,null];
+  dock=L.pool.slice(); dockBig=L.pool.length>7;
+  moves=0; bestAct=0; complete=null; ringAngle=0;
+  el.doneBox.classList.remove('show');
+  el.hintText.classList.add('hidden');
+  el.panelLevel.classList.remove('hidden'); el.panelFree.classList.add('hidden');
+  el.lvTag.textContent='SEKTOR 0'+(i+1);
+  el.lvName.textContent=L.name;
+  el.lvStory.textContent=L.story;
+  el.lvRule.textContent=rule.desc;
+  el.lvEx.textContent=rule.ex;
+  layoutDock(); computeStage(); recompute(true);
+}
+function loadFree(){
+  mode='free';
+  chords=K5; target=Infinity; rule=RULES[freeRule];
+  placed=[null,null,null,null,null];
+  dock=ALL_IDS.slice(); dockBig=true;
+  moves=0; bestAct=0; complete=null;
+  el.doneBox.classList.remove('show');
+  el.panelFree.classList.remove('hidden'); el.panelLevel.classList.add('hidden');
+  layoutDock(); computeStage(); recompute(true);
+}
+function setMode(m){
+  el.tabLevel.classList.toggle('on',m==='level');
+  el.tabFree.classList.toggle('on',m==='free');
+  m==='free' ? loadFree() : loadLevel(lv);
+}
+
+/* ---------- Logika resonansi ---------- */
+function recompute(silent=false){
+  const act=chords.map(([i,j])=>{
+    const a=placed[i], b=placed[j];
+    return !!(a&&b&&rule.fn(SYMBOLS[a].v,SYMBOLS[b].v));
+  });
+  const cnt=act.filter(Boolean).length;
+  if(!silent){
+    const newly=[];
+    act.forEach((on,k)=>{ if(on&&!chordActive[k]) newly.push(k); });
+    if(newly.length){
+      const gain=Math.max(0,cnt-bestAct);
+      score+=gain*15;
+      newly.forEach(k=>{                              // semburan partikel di senar baru
+        const [i,j]=chords[k], A=slotPos(i), B=slotPos(j);
+        for(let q=0;q<10;q++){
+          const t=Math.random();
+          particles.push({x:A.x+(B.x-A.x)*t, y:A.y+(B.y-A.y)*t,
+            vx:(Math.random()-.5)*46, vy:(Math.random()-.5)*46, life:1});
+        }
+      });
+      const c0=chords[newly[0]];
+      sndLink(SYMBOLS[placed[c0[0]]].v, SYMBOLS[placed[c0[1]]].v);
+    }
+    bestAct=Math.max(bestAct,cnt);
+    if(mode==='level'&&!complete&&cnt>=target){
+      complete={t:0}; score+=100; sndWin();
+      setTimeout(()=>{ if(complete) showDone(); },1150);
+    }
+  }
+  chordActive=act;
+  updateStats();
+}
+function updateStats(){
+  const cnt=chordActive.filter(Boolean).length;
+  if(mode==='level'){
+    el.stChord.textContent=cnt+'/'+target;
+    el.stMoves.textContent=moves;
+    el.stScore.textContent=score;
+  }else el.stFree.textContent=cnt+'/10';
+}
+function showDone(){
+  const L=LEVELS[lv], last=lv===LEVELS.length-1;
+  el.doneName.textContent=L.name;
+  el.doneDesc.textContent='Formasi stabil — '+target+' senar bergetar dalam keselarasan. +100 poin.';
+  el.btnNext.textContent=last?'MASUKI SIMULASI BEBAS':'LANJUT KE SEKTOR 0'+(lv+2);
+  el.doneBox.classList.add('show');
+}
+
+/* ---------- Input: drag & drop dengan pointer events ---------- */
+const pos = e => { const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; };
+function hitSlot(p){
+  for(let i=0;i<5;i++){ const S=slotPos(i); if(Math.hypot(p.x-S.x,p.y-S.y)<38) return i; }
+  return -1;
+}
+function hitDock(p){
+  for(let k=0;k<dockRects.length;k++)
+    if(Math.hypot(p.x-dockRects[k].x,p.y-dockRects[k].y)<30) return k;
+  return -1;
+}
+cv.addEventListener('pointerdown',e=>{
+  initAudio();
+  if(complete) return;
+  const p=pos(e);
+  const si=hitSlot(p), di=hitDock(p);
+  if(si>=0&&placed[si]){
+    drag={id:placed[si],from:'slot',fromIdx:si,x:p.x,y:p.y,moved:false,sx:p.x,sy:p.y};
+    placed[si]=null; layoutDock(); recompute(true); sndPick();
+  }else if(di>=0){
+    const id=dockRects[di].id;
+    drag={id,from:'dock',x:p.x,y:p.y,moved:false,sx:p.x,sy:p.y};
+    dock.splice(dock.indexOf(id),1); layoutDock(); recompute(true); sndPick();
+  }else return;
+  cv.classList.add('grabbing');
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',e=>{
+  const p=pos(e);
+  if(drag){ drag.x=p.x; drag.y=p.y; if(Math.hypot(p.x-drag.sx,p.y-drag.sy)>7) drag.moved=true; }
+  hoverSlot=hitSlot(p); hoverDock=hitDock(p);
+});
+function endDrag(e,cancelled){
+  if(!drag) return;
+  cv.classList.remove('grabbing');
+  const p=pos(e), si=cancelled?-1:hitSlot(p);
+  if(si>=0){
+    if(placed[si]){                                   // tukar dengan penghuni slot
+      const back=placed[si];
+      if(drag.from==='slot') placed[drag.fromIdx]=back; else dock.push(back);
+      placed[si]=drag.id;
+    }else placed[si]=drag.id;
+    if(drag.from==='dock'||si!==drag.fromIdx) moves++;
+    sndDrop(SYMBOLS[drag.id].v);
+  }else{
+    if(drag.from==='slot'&&!drag.moved){              // klik tanpa geser → kembali ke baki
+      dock.push(drag.id);
+      toast(SYMBOLS[drag.id].nama+' kembali ke baki');
+    }
+    else if(drag.from==='slot') placed[drag.fromIdx]=drag.id;
+    else dock.push(drag.id);
+  }
+  drag=null; layoutDock(); recompute();
+}
+cv.addEventListener('pointerup',e=>endDrag(e,false));
+cv.addEventListener('pointercancel',e=>endDrag(e,true));
+cv.addEventListener('pointerleave',()=>{ if(!drag) hoverDock=-1; });
+
+/* ---------- Menggambar simbol secara prosedural ---------- */
+function polyPath(n,r,rot=0){
+  ctx.beginPath();
+  for(let k=0;k<n;k++){
+    const a=-Math.PI/2+rot+k*TAU/n;
+    k?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+  }
+  ctx.closePath();
+}
+function starPath(r,rot=0){
+  ctx.beginPath();
+  for(let k=0;k<5;k++){
+    const a=-Math.PI/2+rot+k*TAU*2/5;
+    k?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+  }
+  ctx.closePath();
+}
+function drawPrismShape(r,n,rot){                       // prisma wireframe pseudo-3D
+  const h=r*0.42, tilt=r*0.16;
+  const ring=yOff=>{
+    const pts=[];
+    for(let k=0;k<n;k++){
+      const a=rot+k*TAU/n, x=Math.cos(a)*r, z=Math.sin(a);
+      pts.push({x,y:yOff+z*tilt,z});
+    }
+    return pts;
+  };
+  const top=ring(-h), bot=ring(h);
+  const seg=(a,b)=>{ ctx.globalAlpha=0.35+0.42*((a.z+1)/2);
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke(); };
+  for(let k=0;k<n;k++){ seg(top[k],top[(k+1)%n]); seg(bot[k],bot[(k+1)%n]); seg(top[k],bot[k]); }
+  ctx.globalAlpha=1;
+}
+let symIndex=0; const symHash={};
+ALL_IDS.forEach(id=>symHash[id]=symIndex++);
+
+function drawSymbol(id,x,y,r,o={}){
+  const s=SYMBOLS[id];
+  ctx.save(); ctx.translate(x,y);
+  ctx.strokeStyle=o.color||'#cfc7b0';
+  ctx.lineWidth=o.lw||1.5; ctx.lineJoin='round'; ctx.lineCap='round';
+  const rot=o.rot||0;
+  if(s.kind==='poly'){ polyPath(s.n,r*0.92,rot); ctx.stroke(); }
+  else if(s.kind==='circle'){
+    ctx.beginPath();ctx.arc(0,0,r*0.85,0,TAU);ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,1.7,0,TAU);ctx.fillStyle=o.color||'#cfc7b0';ctx.fill();
+  }
+  else if(s.kind==='vesica'){
+    const off=r*0.34, rr=r*0.62;
+    ctx.beginPath();ctx.arc(-off,0,rr,0,TAU);ctx.stroke();
+    ctx.beginPath();ctx.arc(off,0,rr,0,TAU);ctx.stroke();
+  }
+  else if(s.kind==='star'){
+    starPath(r*0.92,rot); ctx.stroke();
+    ctx.globalAlpha=.4; ctx.beginPath();ctx.arc(0,0,r*0.97,0,TAU);ctx.stroke(); ctx.globalAlpha=1;
+  }
+  else if(s.kind==='prism'){ drawPrismShape(r*0.82,s.n,time*0.6+symHash[id]*1.3); }
+  else if(s.kind==='spiral'){
+    ctx.beginPath();
+    for(let q=0;q<=110;q++){
+      const th=q/110*13.8, rr=r*0.063*Math.exp(0.2*th);
+      const px=Math.cos(th+rot)*rr, py=Math.sin(th+rot)*rr;
+      q?ctx.lineTo(px,py):ctx.moveTo(px,py);
+    }
+    ctx.stroke();
+  }
+  else if(s.kind==='seed'){
+    const rr=r*0.34;
+    ctx.beginPath();ctx.arc(0,0,rr,0,TAU);ctx.stroke();
+    for(let k=0;k<6;k++){
+      const a=k*TAU/6-Math.PI/2;
+      ctx.beginPath();ctx.arc(Math.cos(a)*rr,Math.sin(a)*rr,rr,0,TAU);ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------- Lapisan-lapisan render ---------- */
+function drawStars(){
+  for(const s of stars){
+    const a=Math.max(0,0.16+0.3*Math.sin(time*s.sp+s.ph));
+    ctx.fillStyle=s.warm?`rgba(220,166,68,${a})`:`rgba(232,225,204,${a*0.8})`;
+    ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,TAU);ctx.fill();
+  }
+}
+function drawAstrolabe(){
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.strokeStyle='rgba(232,225,204,0.09)'; ctx.lineWidth=1;
+  ctx.setLineDash([2,7]); ctx.lineDashOffset=-time*7;
+  ctx.beginPath();ctx.arc(0,0,R*1.42,0,TAU);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(232,225,204,0.06)';
+  ctx.beginPath();ctx.arc(0,0,R*1.3,0,TAU);ctx.stroke();
+  ctx.strokeStyle='rgba(232,225,204,0.11)';                 // tanda derajat
+  for(let k=0;k<72;k++){
+    const a=k*TAU/72+time*0.02, L=k%6===0?9:4;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*R*1.5,Math.sin(a)*R*1.5);
+    ctx.lineTo(Math.cos(a)*(R*1.5+L),Math.sin(a)*(R*1.5+L));
+    ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(232,225,204,0.05)';
+  polyPath(5,R*1.16,-time*0.03); ctx.stroke();              // pentagon bayang
+  polyPath(6,R*1.24, time*0.02); ctx.stroke();
+  ctx.restore();
+}
+function drawChords(){
+  const hot=!!complete;
+  chords.forEach((c,k)=>{
+    const A=slotPos(c[0]), B=slotPos(c[1]), on=chordActive[k];
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);
+    if(on){
+      ctx.strokeStyle=hot?COL.amber2:COL.amber; ctx.lineWidth=hot?2.3:1.6;
+      ctx.globalAlpha=0.9; ctx.stroke(); ctx.globalAlpha=1;
+      for(let q=0;q<4;q++){                                 // partikel mengalir di senar
+        const t=(time*0.35+q/4)%1;
+        const px=A.x+(B.x-A.x)*t, py=A.y+(B.y-A.y)*t;
+        ctx.beginPath();ctx.arc(px,py,1.8,0,TAU);
+        ctx.fillStyle=`rgba(242,207,143,${0.85*Math.sin(Math.PI*t)})`;ctx.fill();
+      }
+      [A,B].forEach(P=>{ ctx.beginPath();ctx.arc(P.x,P.y,hot?3.4:2.4,0,TAU);
+        ctx.fillStyle=COL.amber;ctx.fill(); });
+    }else{
+      ctx.strokeStyle='#252932'; ctx.lineWidth=1; ctx.stroke();
+    }
+  });
+}
+function drawSlots(){
+  for(let i=0;i<5;i++){
+    const P=slotPos(i);
+    if(!placed[i]){
+      ctx.save();ctx.setLineDash([3,6]);
+      ctx.strokeStyle='rgba(232,225,204,0.26)';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(P.x,P.y,34,0,TAU);ctx.stroke();ctx.restore();
+    }
+    const a=slotAng(i);                                     // label romawi di luar
+    ctx.font='10px Spectral, serif'; ctx.textAlign='center';
+    ctx.fillStyle='rgba(146,139,120,0.5)';
+    ctx.fillText(ROMAN[i], cx+Math.cos(a)*(R+42), cy+Math.sin(a)*(R+42)+3);
+  }
+  if(drag&&hoverSlot>=0&&!placed[hoverSlot]){               // bayangan pada slot sasaran
+    const P=slotPos(hoverSlot);
+    ctx.save();ctx.setLineDash([4,5]);
+    ctx.strokeStyle='rgba(220,166,68,0.8)';ctx.lineWidth=1.3;
+    ctx.beginPath();ctx.arc(P.x,P.y,34,0,TAU);ctx.stroke();ctx.restore();
+    drawSymbol(drag.id,P.x,P.y,26,{color:'rgba(232,225,204,0.32)'});
+  }
+}
+function slotHasActive(i){
+  return chordActive.some((on,k)=>on&&chords[k].includes(i));
+}
+function drawSymbols(){
+  for(let i=0;i<5;i++){
+    if(!placed[i]) continue;
+    const P=slotPos(i), act=slotHasActive(i);
+    const pulse=act?1+0.045*Math.sin(time*3.2+i*1.7):1;
+    drawSymbol(placed[i],P.x,P.y,29*pulse,
+      {color:act?COL.amber:'#cfc7b0', lw:act?1.9:1.5});
+    ctx.font='11px Spectral, serif'; ctx.textAlign='center';
+    ctx.fillStyle=act?'rgba(220,166,68,0.85)':'rgba(146,139,120,0.8)';
+    ctx.fillText(SYMBOLS[placed[i]].v, P.x, P.y+48);
+  }
+}
+function drawPreview(){                                     // ramalan resonansi saat menyeret
+  if(!drag||hoverSlot<0) return;
+  const vA=SYMBOLS[drag.id].v;
+  chords.forEach(c=>{
+    let o=-1;
+    if(c[0]===hoverSlot&&c[1]!==hoverSlot)o=c[1];
+    else if(c[1]===hoverSlot&&c[0]!==hoverSlot)o=c[0];
+    if(o<0||!placed[o]) return;
+    const on=rule.fn(vA,SYMBOLS[placed[o]].v);
+    const A=slotPos(hoverSlot), B=slotPos(o);
+    ctx.save();ctx.setLineDash([4,7]);ctx.lineDashOffset=-time*24;
+    ctx.strokeStyle=on?'rgba(220,166,68,0.85)':'rgba(138,74,61,0.8)';
+    ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();ctx.restore();
+  });
+}
+function drawParticles(dt){
+  particles=particles.filter(p=>p.life>0);
+  for(const p of particles){
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt*0.9;
+    ctx.beginPath();ctx.arc(p.x,p.y,1.6,0,TAU);
+    ctx.fillStyle=`rgba(242,207,143,${Math.max(0,p.life)})`;ctx.fill();
+  }
+}
+function drawIngram(dt){                                    // koreografi kemenangan
+  complete.t+=dt; const t=complete.t;
+  for(let k=0;k<3;k++){
+    const f=(t*0.45+k/3)%1;
+    ctx.beginPath();ctx.arc(cx,cy,f*R*1.55,0,TAU);
+    ctx.strokeStyle=`rgba(220,166,68,${(1-f)*0.35})`;ctx.lineWidth=1.2;ctx.stroke();
+  }
+  ctx.save();ctx.translate(cx,cy);
+  ctx.strokeStyle=`rgba(220,166,68,${Math.min(0.7,t*0.8)})`;ctx.lineWidth=1.3;
+  const a=time*0.5;
+  polyPath(5,R*0.38,a);ctx.stroke();
+  starPath(R*0.30,-a*1.4);ctx.stroke();
+  polyPath(5,R*0.38,-a*0.7+Math.PI/5);ctx.stroke();
+  ctx.restore();
+  for(let i=0;i<5;i++){
+    const P=slotPos(i);
+    ctx.beginPath();ctx.arc(P.x,P.y,34+6*Math.sin(time*4+i),0,TAU);
+    ctx.strokeStyle='rgba(220,166,68,0.35)';ctx.lineWidth=1;ctx.stroke();
+  }
+}
+function drawDock(){
+  ctx.fillStyle='#0d0f14'; ctx.fillRect(0,dockTop,W,dockH);
+  ctx.strokeStyle='#23262e'; ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,dockTop+.5);ctx.lineTo(W,dockTop+.5);ctx.stroke();
+  ctx.font='10px Spectral, serif'; ctx.textAlign='left';
+  ctx.fillStyle='rgba(146,139,120,0.55)';
+  ctx.fillText('B A K I   F R E K U E N S I', 18, dockTop+22);
+  dockRects.forEach((d,k)=>{
+    if(hoverDock===k&&!drag){
+      ctx.save();ctx.setLineDash([2,5]);
+      ctx.strokeStyle='rgba(220,166,68,0.5)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(d.x,d.y,30,0,TAU);ctx.stroke();ctx.restore();
+    }
+    drawSymbol(d.id,d.x,d.y,20,{color:'#c9c1a9',lw:1.4});
+    ctx.font='10px Spectral, serif'; ctx.textAlign='center';
+    ctx.fillStyle='rgba(146,139,120,0.8)';
+    ctx.fillText(SYMBOLS[d.id].v, d.x, d.y+35);
+    if(hoverDock===k&&!drag){
+      ctx.font='italic 12.5px Spectral, serif';
+      ctx.fillStyle='rgba(232,225,204,0.9)';
+      ctx.fillText(SYMBOLS[d.id].nama+' — frekuensi '+SYMBOLS[d.id].v,
+        clamp(d.x,95,W-95), d.y-34);
+    }
+  });
+}
+function drawDrag(){
+  if(!drag) return;
+  ctx.beginPath();ctx.arc(drag.x,drag.y-6,38,0,TAU);
+  ctx.fillStyle='rgba(220,166,68,0.06)';ctx.fill();
+  drawSymbol(drag.id,drag.x,drag.y-6,30,{color:'#f6efdb',lw:1.8});
+  const s=SYMBOLS[drag.id];
+  ctx.font='italic 13px Spectral, serif'; ctx.textAlign='center';
+  ctx.fillStyle='rgba(232,225,204,0.85)';
+  ctx.fillText(s.nama+' · frekuensi '+s.v, clamp(drag.x,90,W-90), drag.y-54);
+}
+
+/* ---------- Loop utama ---------- */
+function frame(ts){
+  const t=ts/1000, dt=Math.min(0.05,(t-lastT)||0.016);
+  lastT=t; time=t;
+  ctx.clearRect(0,0,W,H);
+  drawStars();
+  if(mode==='free') ringAngle+=ringSpeed*dt*(drag?0:1);
+  drawAstrolabe();
+  drawChords();
+  drawSlots();
+  drawSymbols();
+  drawPreview();
+  drawParticles(dt);
+  if(complete) drawIngram(dt);
+  drawDock();
+  drawDrag();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Kontrol UI ---------- */
+el.btnStart.addEventListener('click',()=>{
+  initAudio();
+  el.intro.classList.add('gone');
+  setTimeout(()=>el.intro.remove(),900);
+  loadLevel(0);
+  [0,4,7].forEach((s,i)=>tone(262*Math.pow(2,s/12),0.4,'sine',0.05,i*0.14));
+});
+el.tabLevel.addEventListener('click',()=>setMode('level'));
+el.tabFree.addEventListener('click',()=>setMode('free'));
+el.btnHint.addEventListener('click',()=>{
+  el.hintText.textContent=LEVELS[lv].hint;
+  el.hintText.classList.remove('hidden');
+});
+el.btnReset.addEventListener('click',()=>{
+  if(complete) return;
+  loadLevel(lv);
+  toast('Sektor diulang dari awal');
+});
+el.btnNext.addEventListener('click',()=>{
+  const last=lv===LEVELS.length-1;
+  el.doneBox.classList.remove('show');
+  if(last){ setMode('free'); toast('Simulasi bebas telah terbuka'); }
+  else loadLevel(lv+1);
+});
+el.btnMute.addEventListener('click',()=>{
+  muted=!muted;
+  el.btnMute.querySelector('.wv').style.display=muted?'none':'';
+  el.btnMute.querySelector('.mx').style.display=muted?'':'none';
+  toast(muted?'Suara dimatikan':'Suara dihidupkan');
+});
+// panel mode bebas
+Object.entries(RULES).forEach(([key,r])=>{
+  const b=document.createElement('button');
+  b.textContent=r.nama.toUpperCase();
+  if(key===freeRule)b.classList.add('on');
+  b.addEventListener('click',()=>{
+    freeRule=key; rule=RULES[key];
+    el.ruleSeg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    el.freeRuleDesc.textContent=r.desc+'  '+r.ex;
+    recompute(true);
+  });
+  el.ruleSeg.appendChild(b);
+});
+el.freeRuleDesc.textContent=RULES[freeRule].desc+'  '+RULES[freeRule].ex;
+el.rgSpeed.addEventListener('input',()=>ringSpeed=el.rgSpeed.value/100*0.5);
+el.btnShuffle.addEventListener('click',()=>{
+  const all=ALL_IDS.slice();
+  for(let i=all.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [all[i],all[j]]=[all[j],all[i]]; }
+  placed=all.splice(0,5); dock=all;
+  moves=0; layoutDock(); recompute();
+  toast('Susunan diacak');
+});
+
+/* ---------- Start ---------- */
+window.addEventListener('resize',resize);
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
